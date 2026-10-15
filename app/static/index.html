@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Support Assistant</title>
+<style>
+:root{--p:#2563eb;--bg:#eef2f8;--bot:#fff;--me:#2563eb;--t:#0f172a}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1220;--bot:#1e293b;--t:#e2e8f0}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--t);height:100vh;display:flex;justify-content:center}
+.app{width:100%;max-width:760px;display:flex;flex-direction:column;height:100vh}
+header{padding:16px 20px;display:flex;align-items:center;gap:12px;background:var(--p);color:#fff}
+header .dot{width:40px;height:40px;border-radius:50%;background:#fff3;display:grid;place-items:center;font-size:22px}
+header small{opacity:.85}header button{margin-left:auto;background:#fff2;color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+#log{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:78%;padding:11px 14px;border-radius:16px;line-height:1.45;white-space:pre-wrap}
+.bot{background:var(--bot);align-self:flex-start;border-bottom-left-radius:4px;box-shadow:0 1px 2px #0001}
+.me{background:var(--me);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.src{font-size:12px;opacity:.65;margin-top:6px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 10px}.chips button{border:1px solid var(--p);background:transparent;color:var(--p);padding:6px 12px;border-radius:99px;cursor:pointer}
+form{display:flex;gap:8px;padding:14px 20px;background:var(--bot)}input{flex:1;padding:12px 14px;border-radius:12px;border:1px solid #cbd5e1;font-size:15px;background:transparent;color:var(--t)}
+form button{background:var(--p);color:#fff;border:0;border-radius:12px;padding:0 18px;font-size:15px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+ <header><div class="dot">🤖</div><div><b>Support Assistant</b><br><small id="prov">online</small></div><button id="clear">New chat</button></header>
+ <div id="log"></div>
+ <div class="chips" id="chips"></div>
+ <form id="f"><input id="msg" placeholder="Ask about delivery, payments, returns..." autocomplete="off"><button>Send</button></form>
+</div>
+<script>
+let sid = localStorage.getItem('sid');
+const log = document.getElementById('log');
+function add(text, who, sources) {
+  const d = document.createElement('div'); d.className = 'm ' + who; d.textContent = text;
+  if (sources && sources.length) { const s = document.createElement('div'); s.className = 'src'; s.textContent = 'From FAQ: ' + sources[0].question; d.appendChild(s); }
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+async function send(text) {
+  add(text, 'me');
+  const r = await fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: text, session_id: sid }) });
+  const j = await r.json(); sid = j.session_id; localStorage.setItem('sid', sid);
+  document.getElementById('prov').textContent = 'Powered by ' + j.provider;
+  add(j.reply, 'bot', j.sources);
+}
+async function restore() {
+  if (!sid) return add('Hi! I can answer questions about our hours, delivery, payments and returns.', 'bot');
+  const r = await fetch('/api/history/' + sid);
+  if (!r.ok) { sid = null; return restore(); }
+  (await r.json()).messages.forEach(m => add(m.content, m.role === 'user' ? 'me' : 'bot'));
+}
+document.getElementById('f').onsubmit = e => { e.preventDefault(); const v = msg.value.trim(); if (v) { msg.value = ''; send(v); } };
+document.getElementById('clear').onclick = async () => { if (sid) await fetch('/api/history/' + sid, { method: 'DELETE' }); sid = null; localStorage.removeItem('sid'); log.innerHTML = ''; restore(); };
+['How much is delivery?', 'Can I return a product?', 'Payment methods', 'Opening hours'].forEach(q => {
+  const b = document.createElement('button'); b.textContent = q; b.onclick = () => send(q); document.getElementById('chips').appendChild(b);
+});
+restore();
+</script>
+</body>
+</html>
