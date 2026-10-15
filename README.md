@@ -78,3 +78,28 @@ tests/
 ## License
 
 Released under the [MIT License](LICENSE). © 2026 Joseph Obaje
+
+## Android app (APK)
+
+The `mobile/` folder contains a Flutter Android app, **AI Assistant**, that works fully offline:
+
+- The FAQ knowledge base and the TF-IDF retriever are ported to Dart, so it answers with no server and no internet.
+- Chat history is saved on the device (`shared_preferences`).
+- Optional: set a backend URL in **Settings** to use this FastAPI server (`POST /api/chat`). If the server can't be reached, it falls back to offline answers.
+
+| Welcome | Chat |
+|---|---|
+| ![Welcome](docs/mobile-app-welcome.png) | ![Chat](docs/mobile-app-chat.png) |
+
+**Download:** grab the APK from the [latest release](https://github.com/Josephobaje/ai-chatbot-assistant/releases/latest). Most modern phones need `app-arm64-v8a-release.apk`; older phones need `app-armeabi-v7a-release.apk`.
+
+Build it yourself:
+
+```bash
+cd mobile
+flutter pub get
+flutter test
+flutter build apk --release --split-per-abi
+```
+
+Release signing reads `mobile/android/key.properties`, which is git-ignored. Without it, the build falls back to debug keys.
